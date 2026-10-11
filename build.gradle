@@ -1,0 +1,102 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.142'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven { name = 'CurseForge'; url = uri('https://cursemaven.com') }
+    flatDir { dirs = ['../Mantle/build/libs', '../Tcon4/build/libs'] }
+}
+
+group = 'justduck.continuumcombat'
+version = "${minecraft_version}-${mod_version}"
+base { archivesName = 'continuum-combat' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
+neoForge {
+    version = project.neoforge_version
+
+    runs {
+        configureEach {
+            systemProperty 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+            systemProperty 'forge.logging.console.level', 'debug'
+            jvmArgument '-Xmx4G'
+        }
+
+        client {
+            client()
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        continuum_combat {
+            sourceSet project.sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    // Mantle & Tcon4 optional/compileOnly
+    compileOnly files('../Tcon4/build/classes/java/main')
+    compileOnly fileTree(dir: '../Tcon4/build/libs', include: 'ContinuumConstruct-*.jar', exclude: '*-sources.jar')
+    compileOnly fileTree(dir: '../Mantle/build/libs', include: 'ContinuumCore-*.jar', exclude: '*-sources.jar')
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+        version: mod_version,
+        mod_name: mod_name,
+        mod_author: mod_author,
+        loader_range: loader_range,
+        minecraft_range: minecraft_range,
+        neoforge_range: neoforge_range,
+        tconstruct_range: tconstruct_range,
+        mantle_range: mantle_range,
+        bettercombat_range: bettercombat_range
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-nowarn', '-Xlint:none', '-Xlint:-deprecation', '-Xlint:-removal', '-Xlint:-unchecked'])
+    options.fork = true
+    options.forkOptions.jvmArgs.add('--sun-misc-unsafe-memory-access=allow')
+}
+
+java {
+    withSourcesJar()
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title': mod_name,
+            'Specification-Vendor': mod_author,
+            'Specification-Version': '1',
+            'Implementation-Title': project.name,
+            'Implementation-Version': "${version}",
+            'Implementation-Vendor': mod_author
+        ])
+    }
+}
